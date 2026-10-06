@@ -286,13 +286,16 @@ $('findBtn').onclick = () => {
 function populateForm() {
   $('cuisine').innerHTML = [
     ...new Set([
-      'Japanese',
-      'Indian',
-      'Italian',
-      'Mexican',
-      'Thai',
       'Chinese',
       'French',
+      'Indian',
+      'Italian',
+      'Japanese',
+      'Korean',
+      'Mediterranean',
+      'Mexican',
+      'Oriental',
+      'Thai',
       'Other',
       ...recipes.map(r => r.cuisine)
     ])
@@ -300,13 +303,14 @@ function populateForm() {
 
   $('category').innerHTML = [
     ...new Set([
-      'Breakfast',
-      'Lunch',
-      'Dinner',
-      'Dessert',
       'Baking',
-      'Snack',
-      'Other',
+      'Curry',
+      'Fresh',
+      'Salad',
+      'Soup',
+      'Sauce',
+      'Warm',
+      'Wrap/Sandwich',
       ...recipes.map(r => r.category)
     ])
   ].map(x => `<option>${esc(x)}</option>`).join('');
