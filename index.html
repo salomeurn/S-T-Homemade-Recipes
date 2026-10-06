@@ -1,77 +1,18 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Our Recipe Book</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Our Recipe Book</title><link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <header class="topbar">
-    <button class="icon-btn" id="browseBtn" aria-label="Open browse menu">☰</button>
-    <div class="brand">🍳 <span>Our Recipe Book</span></div>
-    <button class="icon-btn" id="makeBtn" aria-label="Open What Can I Make">🥫</button>
-  </header>
-
-  <main>
-    <section class="hero">
-      <p class="eyebrow">OUR KITCHEN</p>
-      <h1>What are we cooking?</h1>
-      <div class="search-wrap">
-        <span>⌕</span>
-        <input id="search" type="search" placeholder="Search recipes, ingredients or cuisine...">
-      </div>
-      <button class="add-btn" id="addBtn">＋ Add a recipe</button>
-    </section>
-
-    <section class="content">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">YOUR COLLECTION</p>
-          <h2>Recipes</h2>
-        </div>
-        <span id="recipeCount" class="count"></span>
-      </div>
-      <div id="recipes" class="recipe-grid"></div>
-    </section>
-  </main>
-
-  <div class="overlay" id="overlay"></div>
-
-  <aside class="drawer left" id="browseDrawer">
-    <div class="drawer-head"><h2>Browse</h2><button class="close">×</button></div>
-    <p class="drawer-label">CUISINE</p>
-    <div id="cuisineFilters" class="filter-list"></div>
-    <p class="drawer-label">CATEGORY</p>
-    <div id="categoryFilters" class="filter-list"></div>
-  </aside>
-
-  <aside class="drawer right" id="makeDrawer">
-    <div class="drawer-head"><h2>What can I make?</h2><button class="close">×</button></div>
-    <p class="drawer-copy">Tick the ingredients you currently have. We'll show you the closest matches.</p>
-    <div id="ingredientList" class="ingredient-list"></div>
-    <button class="primary" id="findBtn">Find recipes</button>
-    <div id="matches" class="matches"></div>
-  </aside>
-
-  <aside class="drawer right" id="addDrawer">
-    <div class="drawer-head"><h2>Add a recipe</h2><button class="close">×</button></div>
-    <form id="recipeForm">
-      <label>Recipe name<input id="name" required></label>
-      <label>Cuisine<select id="cuisine" required></select></label>
-      <label>Category<select id="category" required></select></label>
-      <label>Cooking time (minutes)<input id="time" type="number" min="1" value="30" required></label>
-      <label>Difficulty<select id="difficulty"><option>Easy</option><option>Medium</option><option>Hard</option></select></label>
-      <label>Ingredients <small>One per line: amount | ingredient</small>
-        <textarea id="ingredients" rows="7" required placeholder="500 g | chicken&#10;3 tbsp | soy sauce&#10;2 tbsp | mirin"></textarea>
-      </label>
-      <label>Instructions <small>One step per line</small>
-        <textarea id="instructions" rows="7" required placeholder="Cut the chicken...&#10;Mix the sauce...&#10;Cook until..."></textarea>
-      </label>
-      <button class="primary" type="submit">Save recipe</button>
-    </form>
-  </aside>
-
-  <script src="app.js"></script>
-</body>
-</html>
+<header class="topbar"><button class="icon-btn" id="browseBtn">☰</button><div class="brand">🍳 <span>Our Recipe Book</span></div><div class="top-actions"><span id="userStatus" class="user-status"></span><button class="login-btn" id="loginBtn">Log in</button><button class="icon-btn" id="makeBtn">🥫</button></div></header>
+<main><section class="hero"><p class="eyebrow">OUR KITCHEN</p><h1>What are we cooking?</h1><div class="search-wrap"><span>⌕</span><input id="search" type="search" placeholder="Search recipes, ingredients or cuisine..."></div><button class="add-btn" id="addBtn" hidden>＋ Add a recipe</button></section>
+<section class="content"><div class="section-heading"><div><p class="eyebrow">YOUR COLLECTION</p><h2>Recipes</h2></div><span id="recipeCount" class="count"></span></div><div id="recipes" class="recipe-grid"></div></section></main>
+<div class="overlay" id="overlay"></div>
+<aside class="drawer left" id="browseDrawer"><div class="drawer-head"><h2>Browse</h2><button class="close">×</button></div><p class="drawer-label">CUISINE</p><div id="cuisineFilters" class="filter-list"></div><p class="drawer-label">CATEGORY</p><div id="categoryFilters" class="filter-list"></div></aside>
+<aside class="drawer right" id="makeDrawer"><div class="drawer-head"><h2>What can I make?</h2><button class="close">×</button></div><p class="drawer-copy">Tick the ingredients you currently have and we'll show your closest matches.</p><div id="ingredientList" class="ingredient-list"></div><button class="primary" id="findBtn">Find recipes</button><div id="matches" class="matches"></div></aside>
+<aside class="drawer right" id="addDrawer"><div class="drawer-head"><h2>Add a recipe</h2><button class="close">×</button></div><form id="recipeForm"><label>Recipe name<input id="name" required></label><label>Cuisine<select id="cuisine" required></select></label><label>Category<select id="category" required></select></label><label>Cooking time (minutes)<input id="time" type="number" min="1" value="30" required></label><label>Difficulty<select id="difficulty"><option>Easy</option><option>Medium</option><option>Hard</option></select></label><label>Ingredients <small>One per line: amount | ingredient</small><textarea id="ingredients" rows="7" required placeholder="500 g | chicken&#10;3 tbsp | soy sauce&#10;2 tbsp | mirin"></textarea></label><label>Instructions <small>One step per line</small><textarea id="instructions" rows="7" required></textarea></label><button class="primary" type="submit">Save recipe</button></form></aside>
+<aside class="drawer right small-drawer" id="loginDrawer"><div class="drawer-head"><h2>Log in</h2><button class="close">×</button></div><p class="drawer-copy">Only the two authorised recipe editors can add or change recipes.</p><form id="loginForm"><label>Email<input id="email" type="email" required autocomplete="email"></label><label>Password<input id="password" type="password" required autocomplete="current-password"></label><button class="primary" type="submit">Log in</button></form><button id="logoutBtn" class="secondary" hidden>Log out</button><p id="authMessage" class="auth-message"></p></aside>
+<script src="app.js"></script>
+</body></html>
