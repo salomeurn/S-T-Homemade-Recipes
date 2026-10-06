@@ -1,24 +1,396 @@
 const SUPABASE_URL = 'https://awzzjwteqtrfdxonebvr.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_JT_uMS9jeW7StAEhKQAx5A_FmOU5SgX';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-const EDITORS = new Set(['4b2bd538-3f4a-4d31-b4b6-d98d037ec240','a6d8515d-d351-4db4-b46f-55f6deced531']);
-let recipes=[], selectedCuisine='All', selectedCategory='All', currentUser=null;
-const $=id=>document.getElementById(id); const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-function openDrawer(id){document.querySelectorAll('.drawer').forEach(d=>d.classList.remove('open'));$(id).classList.add('open');$('overlay').classList.add('open')}
-function closeDrawers(){document.querySelectorAll('.drawer').forEach(d=>d.classList.remove('open'));$('overlay').classList.remove('open')}
-$('browseBtn').onclick=()=>openDrawer('browseDrawer'); $('makeBtn').onclick=async()=>{buildIngredients();openDrawer('makeDrawer')}; $('addBtn').onclick=()=>{populateForm();openDrawer('addDrawer')}; $('loginBtn').onclick=()=>openDrawer('loginDrawer'); $('overlay').onclick=closeDrawers; document.querySelectorAll('.close').forEach(b=>b.onclick=closeDrawers);
-function filters(target,items,current,setter){$(target).innerHTML=['All',...items].map(x=>`<button class="filter ${x===current?'active':''}" data-value="${esc(x)}">${esc(x)}</button>`).join('');$(target).querySelectorAll('.filter').forEach(b=>b.onclick=()=>{setter(b.dataset.value);render()})}
-function buildBrowse(){filters('cuisineFilters',[...new Set(recipes.map(r=>r.cuisine))].sort(),selectedCuisine,x=>selectedCuisine=x);filters('categoryFilters',[...new Set(recipes.map(r=>r.category))].sort(),selectedCategory,x=>selectedCategory=x)}
-function render(){buildBrowse();const q=$('search').value.trim().toLowerCase();const shown=recipes.filter(r=>{const text=[r.name,r.cuisine,r.category,...r.ingredients.map(x=>x.ingredient)].join(' ').toLowerCase();return(selectedCuisine==='All'||r.cuisine===selectedCuisine)&&(selectedCategory==='All'||r.category===selectedCategory)&&text.includes(q)});$('recipeCount').textContent=`${shown.length} recipe${shown.length===1?'':'s'}`;$('recipes').innerHTML=shown.length?shown.map(r=>`<article class="recipe-card"><div class="recipe-photo">🍽️</div><div class="recipe-body"><h3>${esc(r.name)}</h3><div class="meta">${esc(r.cuisine)} · ${r.time} min · ${esc(r.difficulty)}</div><div class="tags"><span class="tag">${esc(r.category)}</span><span class="tag">${r.ingredients.length} ingredients</span></div></div></article>`).join(''):'<div class="empty">No recipes found. Try another search or filter.</div>'}
-$('search').oninput=render;
-async function loadRecipes(){const {data:rs,error:e1}=await supabase.from('recipes').select('*').order('name');if(e1){console.error(e1);$('recipes').innerHTML='<div class="empty">Could not load recipes. Check your Supabase setup.</div>';return}const ids=rs.map(r=>r.id);let ins=[];if(ids.length){const {data:i,error:e2}=await supabase.from('ingredients').select('id,recipe_id,ingredient,amount').in('recipe_id',ids);if(e2){console.error(e2);return}ins=i||[]}recipes=rs.map(r=>({...r,ingredients:ins.filter(i=>i.recipe_id===r.id)}));render();buildIngredients()}
-function isEditor(){return !!currentUser&&EDITORS.has(currentUser.id)}
-async function refreshAuth(){const {data:{session}}=await supabase.auth.getSession();currentUser=session?.user||null;const editor=isEditor();$('addBtn').hidden=!editor;$('loginBtn').textContent=editor?'Account':'Log in';$('userStatus').textContent=editor?'Editor':''}
-supabase.auth.onAuthStateChange(async()=>{await refreshAuth()});
-$('loginForm').onsubmit=async e=>{e.preventDefault();$('authMessage').textContent='Logging in…';const {error}=await supabase.auth.signInWithPassword({email:$('email').value,password:$('password').value});if(error){$('authMessage').textContent=error.message;return}$('authMessage').textContent='Logged in!';closeDrawers()};
-$('logoutBtn').onclick=async()=>{await supabase.auth.signOut();closeDrawers()};
-async function buildIngredients(){const all=[...new Set(recipes.flatMap(r=>r.ingredients.map(i=>i.ingredient)))].sort();$('ingredientList').innerHTML=all.map(i=>`<label class="ingredient"><input type="checkbox" value="${esc(i)}"> ${esc(i)}</label>`).join('')||'<p class="drawer-copy">Add some recipes first and their ingredients will appear here.</p>'}
-$('findBtn').onclick=()=>{const have=new Set([...document.querySelectorAll('#ingredientList input:checked')].map(x=>x.value.toLowerCase()));const ranked=recipes.map(r=>{const missing=r.ingredients.map(i=>i.ingredient).filter(i=>!have.has(i.toLowerCase()));return {...r,missing,score:r.ingredients.length?Math.round((r.ingredients.length-missing.length)/r.ingredients.length*100):0}}).sort((a,b)=>b.score-a.score);$('matches').innerHTML=ranked.map(r=>`<div class="match"><strong>${esc(r.name)} — ${r.score}% match</strong><small>${r.missing.length?`Missing: ${r.missing.map(esc).join(', ')}`:'You have everything!'}</small></div>`).join('')};
-function populateForm(){$('cuisine').innerHTML=[...new Set(['Japanese','Indian','Italian','Mexican','Thai','Chinese','French','Other',...recipes.map(r=>r.cuisine)])].map(x=>`<option>${esc(x)}</option>`).join('');$('category').innerHTML=[...new Set(['Breakfast','Lunch','Dinner','Dessert','Baking','Snack','Other',...recipes.map(r=>r.category)])].map(x=>`<option>${esc(x)}</option>`).join('')}
-$('recipeForm').onsubmit=async e=>{e.preventDefault();if(!isEditor()){alert('You must be logged in as an authorised editor.');return}const ingredients=$('ingredients').value.split('\n').map(x=>{const [amount,...rest]=x.split('|');return{amount:amount.trim(),ingredient:rest.join('|').trim()}}).filter(x=>x.ingredient);const recipe={name:$('name').value.trim(),cuisine:$('cuisine').value,category:$('category').value,time:Number($('time').value),difficulty:$('difficulty').value,instructions:$('instructions').value.split('\n').map(x=>x.trim()).filter(Boolean).join('\n')};const {data:r,error:e1}=await supabase.from('recipes').insert(recipe).select().single();if(e1){alert(e1.message);return}const rows=ingredients.map(i=>({...i,recipe_id:r.id}));if(rows.length){const {error:e2}=await supabase.from('ingredients').insert(rows);if(e2){await supabase.from('recipes').delete().eq('id',r.id);alert(e2.message);return}}e.target.reset();closeDrawers();await loadRecipes();alert('Recipe saved!')};
-(async()=>{await refreshAuth();await loadRecipes()})();
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
+
+const EDITORS = new Set([
+  '4b2bd538-3f4a-4d31-b4b6-d98d037ec240',
+  'a6d8515d-d351-4db4-b46f-55f6deced531'
+]);
+
+let recipes = [];
+let selectedCuisine = 'All';
+let selectedCategory = 'All';
+let currentUser = null;
+
+const $ = id => document.getElementById(id);
+
+const esc = s =>
+  String(s ?? '').replace(/[&<>"']/g, m => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[m]));
+
+function openDrawer(id) {
+  document.querySelectorAll('.drawer').forEach(d => d.classList.remove('open'));
+  $(id).classList.add('open');
+  $('overlay').classList.add('open');
+}
+
+function closeDrawers() {
+  document.querySelectorAll('.drawer').forEach(d => d.classList.remove('open'));
+  $('overlay').classList.remove('open');
+}
+
+$('browseBtn').onclick = () => openDrawer('browseDrawer');
+
+$('makeBtn').onclick = async () => {
+  buildIngredients();
+  openDrawer('makeDrawer');
+};
+
+$('addBtn').onclick = () => {
+  populateForm();
+  openDrawer('addDrawer');
+};
+
+$('loginBtn').onclick = () => openDrawer('loginDrawer');
+
+$('overlay').onclick = closeDrawers;
+
+document.querySelectorAll('.close').forEach(
+  b => b.onclick = closeDrawers
+);
+
+function filters(target, items, current, setter) {
+  $(target).innerHTML = ['All', ...items]
+    .map(x =>
+      `<button class="filter ${x === current ? 'active' : ''}" data-value="${esc(x)}">${esc(x)}</button>`
+    )
+    .join('');
+
+  $(target).querySelectorAll('.filter').forEach(b => {
+    b.onclick = () => {
+      setter(b.dataset.value);
+      render();
+    };
+  });
+}
+
+function buildBrowse() {
+  filters(
+    'cuisineFilters',
+    [...new Set(recipes.map(r => r.cuisine))].sort(),
+    selectedCuisine,
+    x => selectedCuisine = x
+  );
+
+  filters(
+    'categoryFilters',
+    [...new Set(recipes.map(r => r.category))].sort(),
+    selectedCategory,
+    x => selectedCategory = x
+  );
+}
+
+function render() {
+  buildBrowse();
+
+  const q = $('search').value.trim().toLowerCase();
+
+  const shown = recipes.filter(r => {
+    const text = [
+      r.name,
+      r.cuisine,
+      r.category,
+      ...r.ingredients.map(x => x.ingredient)
+    ].join(' ').toLowerCase();
+
+    return (
+      (selectedCuisine === 'All' || r.cuisine === selectedCuisine) &&
+      (selectedCategory === 'All' || r.category === selectedCategory) &&
+      text.includes(q)
+    );
+  });
+
+  $('recipeCount').textContent =
+    `${shown.length} recipe${shown.length === 1 ? '' : 's'}`;
+
+  $('recipes').innerHTML = shown.length
+    ? shown.map(r => `
+        <article class="recipe-card">
+          <div class="recipe-photo">🍽️</div>
+
+          <div class="recipe-body">
+            <h3>${esc(r.name)}</h3>
+
+            <div class="meta">
+              ${esc(r.cuisine)} · ${r.time} min · ${esc(r.difficulty)}
+            </div>
+
+            <div class="tags">
+              <span class="tag">${esc(r.category)}</span>
+              <span class="tag">${r.ingredients.length} ingredients</span>
+            </div>
+          </div>
+        </article>
+      `).join('')
+    : '<div class="empty">No recipes found. Try another search or filter.</div>';
+}
+
+$('search').oninput = render;
+
+async function loadRecipes() {
+  const { data: rs, error: e1 } =
+    await supabaseClient
+      .from('recipes')
+      .select('*')
+      .order('name');
+
+  if (e1) {
+    console.error(e1);
+    $('recipes').innerHTML =
+      '<div class="empty">Could not load recipes. Check your Supabase setup.</div>';
+    return;
+  }
+
+  const ids = rs.map(r => r.id);
+
+  let ins = [];
+
+  if (ids.length) {
+    const { data: i, error: e2 } =
+      await supabaseClient
+        .from('ingredients')
+        .select('id,recipe_id,ingredient,amount')
+        .in('recipe_id', ids);
+
+    if (e2) {
+      console.error(e2);
+      return;
+    }
+
+    ins = i || [];
+  }
+
+  recipes = rs.map(r => ({
+    ...r,
+    ingredients: ins.filter(i => i.recipe_id === r.id)
+  }));
+
+  render();
+  buildIngredients();
+}
+
+function isEditor() {
+  return !!currentUser && EDITORS.has(currentUser.id);
+}
+
+async function refreshAuth() {
+  const {
+    data: { session }
+  } = await supabaseClient.auth.getSession();
+
+  currentUser = session?.user || null;
+
+  const editor = isEditor();
+
+  $('addBtn').hidden = !editor;
+  $('loginBtn').textContent = editor ? 'Account' : 'Log in';
+
+  $('userStatus').textContent = editor ? 'Editor' : '';
+}
+
+supabaseClient.auth.onAuthStateChange(async () => {
+  await refreshAuth();
+});
+
+$('loginForm').onsubmit = async e => {
+  e.preventDefault();
+
+  $('authMessage').textContent = 'Logging in…';
+
+  const { error } =
+    await supabaseClient.auth.signInWithPassword({
+      email: $('email').value,
+      password: $('password').value
+    });
+
+  if (error) {
+    $('authMessage').textContent = error.message;
+    return;
+  }
+
+  $('authMessage').textContent = 'Logged in!';
+  closeDrawers();
+};
+
+$('logoutBtn').onclick = async () => {
+  await supabaseClient.auth.signOut();
+  closeDrawers();
+};
+
+function buildIngredients() {
+  const all = [
+    ...new Set(
+      recipes.flatMap(r =>
+        r.ingredients.map(i => i.ingredient)
+      )
+    )
+  ].sort();
+
+  $('ingredientList').innerHTML =
+    all.map(i => `
+      <label class="ingredient">
+        <input type="checkbox" value="${esc(i)}">
+        ${esc(i)}
+      </label>
+    `).join('')
+    ||
+    '<p class="drawer-copy">Add some recipes first and their ingredients will appear here.</p>';
+}
+
+$('findBtn').onclick = () => {
+  const have = new Set(
+    [...document.querySelectorAll('#ingredientList input:checked')]
+      .map(x => x.value.toLowerCase())
+  );
+
+  const ranked = recipes.map(r => {
+    const missing = r.ingredients
+      .map(i => i.ingredient)
+      .filter(i => !have.has(i.toLowerCase()));
+
+    return {
+      ...r,
+      missing,
+      score: r.ingredients.length
+        ? Math.round(
+            ((r.ingredients.length - missing.length) /
+              r.ingredients.length) * 100
+          )
+        : 0
+    };
+  }).sort((a, b) => b.score - a.score);
+
+  $('matches').innerHTML = ranked.map(r => `
+    <div class="match">
+      <strong>${esc(r.name)} — ${r.score}% match</strong>
+      <small>
+        ${
+          r.missing.length
+            ? `Missing: ${r.missing.map(esc).join(', ')}`
+            : 'You have everything!'
+        }
+      </small>
+    </div>
+  `).join('');
+};
+
+function populateForm() {
+  $('cuisine').innerHTML = [
+    ...new Set([
+      'Japanese',
+      'Indian',
+      'Italian',
+      'Mexican',
+      'Thai',
+      'Chinese',
+      'French',
+      'Other',
+      ...recipes.map(r => r.cuisine)
+    ])
+  ].map(x => `<option>${esc(x)}</option>`).join('');
+
+  $('category').innerHTML = [
+    ...new Set([
+      'Breakfast',
+      'Lunch',
+      'Dinner',
+      'Dessert',
+      'Baking',
+      'Snack',
+      'Other',
+      ...recipes.map(r => r.category)
+    ])
+  ].map(x => `<option>${esc(x)}</option>`).join('');
+}
+
+$('recipeForm').onsubmit = async e => {
+  e.preventDefault();
+
+  if (!isEditor()) {
+    alert('You must be logged in as an authorised editor.');
+    return;
+  }
+
+  const ingredients =
+    $('ingredients').value
+      .split('\n')
+      .map(x => {
+        const [amount, ...rest] = x.split('|');
+
+        return {
+          amount: amount.trim(),
+          ingredient: rest.join('|').trim()
+        };
+      })
+      .filter(x => x.ingredient);
+
+  const recipe = {
+    name: $('name').value.trim(),
+    cuisine: $('cuisine').value,
+    category: $('category').value,
+    time: Number($('time').value),
+    difficulty: $('difficulty').value,
+    instructions: $('instructions').value
+      .split('\n')
+      .map(x => x.trim())
+      .filter(Boolean)
+      .join('\n')
+  };
+
+  const {
+    data: r,
+    error: e1
+  } = await supabaseClient
+    .from('recipes')
+    .insert(recipe)
+    .select()
+    .single();
+
+  if (e1) {
+    alert(e1.message);
+    return;
+  }
+
+  const rows = ingredients.map(i => ({
+    ...i,
+    recipe_id: r.id
+  }));
+
+  if (rows.length) {
+    const { error: e2 } =
+      await supabaseClient
+        .from('ingredients')
+        .insert(rows);
+
+    if (e2) {
+      await supabaseClient
+        .from('recipes')
+        .delete()
+        .eq('id', r.id);
+
+      alert(e2.message);
+      return;
+    }
+  }
+
+  e.target.reset();
+  closeDrawers();
+
+  await loadRecipes();
+
+  alert('Recipe saved!');
+};
+
+(async () => {
+  await refreshAuth();
+  await loadRecipes();
+})();
